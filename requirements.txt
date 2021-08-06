@@ -1,0 +1,4 @@
+# Dependencies are defined in setup.cfg in `install_requires`
+# This requirements.txt is only used in docker build for caching purpose
+# You may duplicate some dependency from setup.cfg to here to avoid reinstalling for each docker build.
+locust

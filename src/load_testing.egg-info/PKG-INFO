@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: load-testing
+Version: 0.1.3
+Summary: A Collection of scripts for load testing our services using locust.io
+Home-page: https://github.com/aquabyte-new
+Author: Rishabh Malviya
+Author-email: rishabh@aquabyte.ai
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
