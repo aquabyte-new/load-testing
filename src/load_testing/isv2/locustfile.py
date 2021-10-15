@@ -1,15 +1,25 @@
 import time
 import random
 import json
+import copy
+import datetime
 
 from locust import HttpUser, TaskSet, task
 
-
-EP_PRODUCTION = "https://user_dev:7ff463baf99c9d947b39d1b435a9711f@imageservice.aquabyte.ai:443"
+EP_PRODUCTION = "https://user_dev:7ff463baf99c9d947b39d1b435a9711f@imageservice-production.aquabyte.ai:443"
 EP_STAGING = "https://user_dev:7ff463baf99c9d947b39d1b435a9711f@imageservice-stg.aquabyte.ai:443"
-EP = "http://localhost:5000"
+EP = EP_PRODUCTION
 
-users = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+users = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+pen_site_ids = [
+    (109, 251),
+    (45, 160),
+    (114, 273),
+    (45, 67),
+    (68, 123),
+    (45, 193)
+]
 
 lati_ann = {
     "lice": [
@@ -86,6 +96,73 @@ lati_ann_no_lice = {
     ]
 }
 
+add_data_payload_template = {
+    "pairId": "environment=production/site-id=23/pen-id=4/date=2019-04-24/hour=14/at=2019-04-24T14:58:36.060286000Z/left_frame_crop_1262_782_3082_2256.jpg",
+    "capturedAt": "2019-04-11T09:21:03.822683000Z",
+    "siteId": "23",
+    "penId": "5",
+    "bucket": "aquabyte-frames-resized-inbound",
+    "imageScore": 0.0033,
+    "imageScoreVersion": "unit_testing",
+    "feedingHourWeight": 1.0,
+    "cameraMetadata": {"baseline": 0.10079791852561114, "focalLength": 0.013842509663066934,
+                       "pixelCountWidth": 3000, "focalLengthPixel": 4012.3216414686767, "imageSensorWidth": 0.01412,
+                       "pixelCountHeight": 4096, "imageSensorHeight": 0.01035},
+    "key": "environment=production/site-id=23/pen-id=4/date=2019-04-24/hour=14/at=2019-04-24T14:58:36.060286000Z/left_frame_crop_1262_782_3082_2256.jpg",
+    "groupId": "5",
+    "leftCropUrl": "https://s3-eu-west-1.amazonaws.com/aquabyte-crops/environment=production/site-id=23/pen-id=4/date=2019-04-24/hour=14/at=2019-04-24T14:58:36.060286000Z/left_frame_crop_1262_782_3082_2253.jpg",
+    "leftCropMetadata": {"width": 1820, "height": 1471, "x_coord": 1262, "y_coord": 782, "crop_area": 2677220,
+                         "qualityScore": {"quality": 0.003383773611858487, "darkness": 0.9823471307754517,
+                                          "modelInfo": {"model": "Mobilenet", "input_size": [224, 224, 3],
+                                                        "description": "binary classification good / bad for filtering",
+                                                        "output_size": [3],
+                                                        "probability": {"is_dark": 2, "is_good": 0,
+                                                                        "is_blurry": 1}},
+                                          "blurriness": 0.014788443222641945}, "mean_luminance": 14.36250625648994},
+    "rightCropUrl": "https://s3-eu-west-1.amazonaws.com/aquabyte-crops/environment=production/site-id=23/pen-id=4/date=2019-04-24/hour=14/at=2019-04-24T14:58:36.060286000Z/right_frame_crop_1006_811_2674_2294.jpg",
+    "rightCropMetadata": {"width": 1668, "height": 1483, "x_coord": 1006, "y_coord": 811, "crop_area": 2473644,
+                          "qualityScore": {"quality": 0.003383773611858487, "darkness": 0.9823471307754517,
+                                           "modelInfo": {"model": "Mobilenet", "input_size": [224, 224, 3],
+                                                         "description": "binary classification good / bad for filtering",
+                                                         "output_size": [3],
+                                                         "probability": {"is_dark": 2, "is_good": 0,
+                                                                         "is_blurry": 1}},
+                                           "blurriness": 0.014788443222641945},
+                          "mean_luminance": 14.129674278109542}
+}
+
+
+def generate_ingress_payload(
+        site_id: str = add_data_payload_template['siteId'],
+        pen_id: str = add_data_payload_template['penId'],
+        utc_timestamp: datetime.datetime = datetime.datetime.utcnow(),
+        image_score: float = 0.5
+) -> dict:
+    generated_payload = copy.deepcopy(add_data_payload_template)
+
+    generated_payload['penId'] = pen_id
+    generated_payload['siteId'] = site_id
+
+    utc_timestamp = utc_timestamp.replace(tzinfo=datetime.timezone.utc)
+    generated_payload['capturedAt'] = utc_timestamp.isoformat()
+
+    path_string = f'environment=production/' \
+                  + f'site-id={site_id}/' \
+                  + f'pen-id={pen_id}/' \
+                  + f'date={utc_timestamp.date().isoformat()}/' \
+                  + f'hour={utc_timestamp.hour:02d}/' \
+                  + f'at={utc_timestamp.isoformat()}/'
+    generated_payload['key'] = path_string + add_data_payload_template['key'].split('/')[-1]
+    generated_payload['pairId'] = path_string + add_data_payload_template['pairId'].split('/')[-1]
+
+    url_prefix = 'https://s3-eu-west-1.amazonaws.com/aquabyte-crops/'
+    generated_payload['leftCropUrl'] = url_prefix + path_string + add_data_payload_template['leftCropUrl']
+    generated_payload['rightCropUrl'] = url_prefix + path_string + add_data_payload_template['rightCropUrl']
+
+    generated_payload['imageScore'] = image_score
+
+    return generated_payload
+
 
 class HappyPathBehavior(TaskSet):
     def on_start(self):
@@ -99,60 +176,16 @@ class HappyPathBehavior(TaskSet):
         return {k: v for k, v in kwargs.items() if v is not None}
 
     @task
-    def happy_path(self):
-        # 1. PUT annotation
-        result = self.client.put(f'/lati/annotation/images', json=self._json_payload(
-            requesterId=self.requester_id,
-            numImages=3
-        ), name="annotation_put").json()
-
-        is_at_least_one_accepted = False
-        for r in result:
-            time.sleep(random.randint(1,5))
-
-            # 2. POST annotation
-            if not is_at_least_one_accepted:
-                self.client.post(f'/lati/annotation/images', json=self._json_payload(
-                    requesterId=self.requester_id,
-                    id=r['id'],
-                    accepted=True,
-                    annotation=lati_ann,
-                    skipReasons=None,
-                    imageScore=None,
-                ), name="annotation_post")
-
-                is_at_least_one_accepted = True
-            else:
-                if random.randint(0,100) < 50:
-                    # Accept
-                    self.client.post(f'/lati/annotation/images', json=self._json_payload(
-                        requesterId=self.requester_id,
-                        id=r['id'],
-                        accepted=True,
-                        annotation=lati_ann,
-                        skipReasons=None,
-                        imageScore=None,
-                    ), name="annotation_post")
-                else:
-                    # Skip
-                    self.client.post(f'/lati/annotation/images', json=self._json_payload(
-                        requesterId=self.requester_id,
-                        id=r['id'],
-                        accepted=False,
-                        annotation=None,
-                        skipReasons=['is_bad_crop'],
-                        imageScore=None,
-                    ), name="annotation_post")
-
+    def qa(self):
         # 3. PUT qa
-        time.sleep(random.randint(1,5))
+        time.sleep(random.randint(1, 5))
         result = self.client.put(f'/lati/qa/images', json=self._json_payload(
             requesterId=self.requester_id,
-            numImages=3
+            numImages=5
         ), name="qa_put").json()
 
-        for r in result:
-            time.sleep(random.randint(1,5))
+        for r in result[0:random.randint(3, 5)]:
+            time.sleep(random.randint(1, 5))
 
             # 4. POST annotation
             random_int = random.randint(0, 100)
@@ -166,7 +199,7 @@ class HappyPathBehavior(TaskSet):
                     annotation=lati_ann,
                     skipReasons=None,
                     imageScore=None,
-                ), name="qa_post")
+                ), name="qa_post_accept")
             elif random_int < 75:
                 # Accept With New Annotation
                 self.client.post(f'/lati/qa/images', json=self._json_payload(
@@ -176,7 +209,7 @@ class HappyPathBehavior(TaskSet):
                     annotation=lati_ann_no_lice,
                     skipReasons=None,
                     imageScore=None,
-                ), name="qa_post")
+                ), name="qa_post_accept")
             else:
                 # Skip
                 self.client.post(f'/lati/qa/images', json=self._json_payload(
@@ -186,9 +219,63 @@ class HappyPathBehavior(TaskSet):
                     annotation=None,
                     skipReasons=['is_bad_crop'],
                     imageScore=None,
-                ), name="qa_post")
+                ), name="qa_post_skip")
+
+    @task(3)
+    def annotation(self):
+        # 1. PUT annotation
+        result = self.client.put(f'/lati/annotation/images', json=self._json_payload(
+            requesterId=self.requester_id,
+            numImages=5
+        ), name="annotation_put").json()
+
+        is_at_least_one_accepted = False
+        for r in result[0:random.randint(3, 5)]:
+            time.sleep(random.randint(1, 5))
+
+            # 2. POST annotation
+            if not is_at_least_one_accepted:
+                self.client.post(f'/lati/annotation/images', json=self._json_payload(
+                    requesterId=self.requester_id,
+                    id=r['id'],
+                    accepted=True,
+                    annotation=lati_ann,
+                    skipReasons=None,
+                    imageScore=None,
+                ), name="annotation_post_accept")
+
+                is_at_least_one_accepted = True
+            else:
+                if random.randint(0, 100) < 50:
+                    # Accept
+                    self.client.post(f'/lati/annotation/images', json=self._json_payload(
+                        requesterId=self.requester_id,
+                        id=r['id'],
+                        accepted=True,
+                        annotation=lati_ann,
+                        skipReasons=None,
+                        imageScore=None,
+                    ), name="annotation_post_accept")
+                else:
+                    # Skip
+                    self.client.post(f'/lati/annotation/images', json=self._json_payload(
+                        requesterId=self.requester_id,
+                        id=r['id'],
+                        accepted=False,
+                        annotation=None,
+                        skipReasons=['is_bad_crop'],
+                        imageScore=None,
+                    ), name="annotation_post_skip")
+
+    @task(10)
+    def ingress(self):
+        # 1. POST ingress
+        for _ in range(10):
+            site_id, pen_id = random.choice(pen_site_ids)
+            self.client.post(f'/lati/ingress/images', json=generate_ingress_payload(site_id, pen_id), name="ingress")
+            time.sleep(1)
 
 
 class HappyPathUser(HttpUser):
-    tasks = {HappyPathBehavior:1}
+    tasks = {HappyPathBehavior: 1}
     host = EP
