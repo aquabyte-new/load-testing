@@ -3,15 +3,33 @@ import random
 import json
 import copy
 import datetime
+import boto3
 
 from locust import HttpUser, TaskSet, task
 
-EP_PRODUCTION = "https://user_dev:7ff463baf99c9d947b39d1b435a9711f@imageservice-production.aquabyte.ai:443"
-EP_STAGING = "https://user_dev:7ff463baf99c9d947b39d1b435a9711f@imageservice-stg.aquabyte.ai:443"
+#######################################
+# Endpoints
+#######################################
+def get_api_password():
+    ssm = boto3.client('ssm', region_name='eu-west-1')
+    param = ssm.get_parameter(Name='/api-password/image-service/user_dev', WithDecryption=True)
+
+    return param['Parameter']['Value']
+
+api_password = get_api_password()
+EP_PRODUCTION = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
+EP_STAGING = f'https://user_dev:{api_password}@imageservice-stg.aquabyte.ai:443'
 EP = EP_PRODUCTION
 
+#######################################
+# Simulated Users
+#######################################
 users = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
+
+#######################################
+# Dummy Data
+#######################################
 pen_site_ids = [
     (109, 251),
     (45, 160),
