@@ -1,3 +1,0 @@
-[console_scripts]
-hello = helloworld_app.helloworld_app:main
-
