@@ -1,5 +1,6 @@
 import time
 import random
+import requests
 import json
 import copy
 import datetime
@@ -19,7 +20,7 @@ def get_api_password():
 api_password = get_api_password()
 EP_PRODUCTION = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
 EP_STAGING = f'https://user_dev:{api_password}@imageservice-stg.aquabyte.ai:443'
-EP = EP_PRODUCTION
+EP = EP_STAGING
 
 #######################################
 # Simulated Users
@@ -30,7 +31,7 @@ users = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 #######################################
 # Dummy Data
 #######################################
-pen_site_ids = [
+site_pen_ids = [
     (109, 251),
     (45, 160),
     (114, 273),
@@ -38,6 +39,9 @@ pen_site_ids = [
     (68, 123),
     (45, 193)
 ]
+
+for pen_id in [e[1] for e in site_pen_ids] + ['83', '100', '122', '123', '128', '132', '138', '149', '151']:  ## Extra pens are from WeightedQueue config file in imageservice-v2
+    requests.put(f'{EP}/lati/groupSelection/{pen_id}', json={"enable": True})
 
 lati_ann = {
     "lice": [
@@ -153,7 +157,7 @@ add_data_payload_template = {
 def generate_ingress_payload(
         site_id: str = add_data_payload_template['siteId'],
         pen_id: str = add_data_payload_template['penId'],
-        utc_timestamp: datetime.datetime = datetime.datetime.utcnow(),
+        utc_timestamp: datetime.datetime = None,
         image_score: float = 0.5
 ) -> dict:
     generated_payload = copy.deepcopy(add_data_payload_template)
@@ -161,6 +165,8 @@ def generate_ingress_payload(
     generated_payload['penId'] = pen_id
     generated_payload['siteId'] = site_id
 
+    if not utc_timestamp:
+        utc_timestamp = datetime.datetime.utcnow() - datetime.timedelta(days=1)
     utc_timestamp = utc_timestamp.replace(tzinfo=datetime.timezone.utc)
     generated_payload['capturedAt'] = utc_timestamp.isoformat()
 
@@ -187,6 +193,8 @@ class HappyPathBehavior(TaskSet):
         if len(users) > 0:
             user_id = users.pop()
             self.requester_id = f'load_test_user_{user_id}'
+
+
 
     @staticmethod
     def _json_payload(**kwargs):
@@ -289,7 +297,7 @@ class HappyPathBehavior(TaskSet):
     def ingress(self):
         # 1. POST ingress
         for _ in range(10):
-            site_id, pen_id = random.choice(pen_site_ids)
+            site_id, pen_id = random.choice(site_pen_ids)
             self.client.post(f'/lati/ingress/images', json=generate_ingress_payload(site_id, pen_id), name="ingress")
             time.sleep(1)
 
