@@ -11,7 +11,7 @@ from locust import HttpUser, TaskSet, task
 #######################################
 # Endpoints
 #######################################
-TEST_ENVIRONMENT = 'local'
+TEST_ENVIRONMENT = 'staging'
 
 def get_api_password():
     ssm = boto3.client('ssm', region_name='eu-west-1')
@@ -23,10 +23,10 @@ if TEST_ENVIRONMENT == 'local':
     EP = 'http://localhost:5000/'
 elif TEST_ENVIRONMENT == 'staging':
     api_password = get_api_password()
-    EP_STAGING = f'https://user_dev:{api_password}@imageservice-stg.aquabyte.ai:443'
+    EP = f'https://user_dev:{api_password}@imageservice-stg.aquabyte.ai:443'
 elif TEST_ENVIRONMENT == 'production':
     api_password = get_api_password()
-    EP_PRODUCTION = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
+    EP = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
 else:
     raise f'TEST_ENVIRONMENT is {TEST_ENVIRONMENT}. Must be one of `local`, `staging`, or `production`.'
 
