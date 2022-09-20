@@ -8,10 +8,11 @@ import boto3
 
 from locust import HttpUser, TaskSet, task
 
+
 #######################################
 # Endpoints
 #######################################
-TEST_ENVIRONMENT = 'staging'
+TEST_ENVIRONMENT = 'local'
 
 def get_api_password():
     ssm = boto3.client('ssm', region_name='eu-west-1')
@@ -29,6 +30,7 @@ elif TEST_ENVIRONMENT == 'production':
     EP = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
 else:
     raise f'TEST_ENVIRONMENT is {TEST_ENVIRONMENT}. Must be one of `local`, `staging`, or `production`.'
+
 
 #######################################
 # Simulated Users
@@ -201,7 +203,6 @@ class HappyPathBehavior(TaskSet):
         if len(users) > 0:
             user_id = users.pop()
             self.requester_id = f'load_test_user_{user_id}'
-
 
 
     @staticmethod
