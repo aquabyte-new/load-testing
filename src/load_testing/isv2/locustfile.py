@@ -1,3 +1,4 @@
+import sys
 import time
 import random
 import requests
@@ -8,11 +9,15 @@ import boto3
 
 from locust import HttpUser, TaskSet, task
 
-
 #######################################
 # Endpoints
 #######################################
 TEST_ENVIRONMENT = 'local'
+confirmation = input(f'Confirm that you want to load test {TEST_ENVIRONMENT.upper()} (type yes/no): ')
+if not confirmation == "yes":
+    print("Terminating execution.")
+    sys.exit(1)
+
 
 def get_api_password():
     ssm = boto3.client('ssm', region_name='eu-west-1')
@@ -20,23 +25,16 @@ def get_api_password():
 
     return param['Parameter']['Value']
 
-if TEST_ENVIRONMENT == 'local':
-    EP = 'http://localhost:5000/'
-elif TEST_ENVIRONMENT == 'staging':
-    api_password = get_api_password()
-    EP = f'https://user_dev:{api_password}@imageservice-stg.aquabyte.ai:443'
-elif TEST_ENVIRONMENT == 'production':
-    api_password = get_api_password()
-    EP = f'https://user_dev:{api_password}@imageservice-production.aquabyte.ai:443'
-else:
-    raise f'TEST_ENVIRONMENT is {TEST_ENVIRONMENT}. Must be one of `local`, `staging`, or `production`.'
 
+if TEST_ENVIRONMENT == 'local': EP = 'http://localhost:5000/'
+elif TEST_ENVIRONMENT == 'staging': EP = f'https://user_dev:{get_api_password()}@imageservice-stg.aquabyte.ai:443'
+elif TEST_ENVIRONMENT == 'production': EP = f'https://user_dev:{get_api_password()}@imageservice-production.aquabyte.ai:443'
+else: raise f'TEST_ENVIRONMENT is {TEST_ENVIRONMENT}. Must be one of `local`, `staging`, or `production`.'
 
 #######################################
 # Simulated Users
 #######################################
 users = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-
 
 #######################################
 # Dummy Data
@@ -50,7 +48,8 @@ site_pen_ids = [
     (45, 193)
 ]
 
-for pen_id in [e[1] for e in site_pen_ids] + ['83', '100', '122', '123', '128', '132', '138', '149', '151']:  ## Extra pens are from WeightedQueue config file in imageservice-v2
+for pen_id in [e[1] for e in site_pen_ids] + ['83', '100', '122', '123', '128', '132', '138', '149',
+                                              '151']:  ## Extra pens are from WeightedQueue config file in imageservice-v2
     requests.put(f'{EP}/lati/groupSelection/{pen_id}', json={"enable": True})
 
 lati_ann = {
@@ -203,7 +202,6 @@ class HappyPathBehavior(TaskSet):
         if len(users) > 0:
             user_id = users.pop()
             self.requester_id = f'load_test_user_{user_id}'
-
 
     @staticmethod
     def _json_payload(**kwargs):
