@@ -14,7 +14,7 @@ cd ./src/load_testing/isv2
 locust
 ```
 
-**Make sure you are hitting the desired endpoint by checking the source code first! Don't accidentally load test production instead of staging!**
+Then open `localhost:8089` in your browser, and spawn your desired number of simultaneous simulated users, and launch the load test.
 
 
 ## Initial Development Setup

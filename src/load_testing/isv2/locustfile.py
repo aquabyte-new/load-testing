@@ -12,7 +12,7 @@ from locust import HttpUser, TaskSet, task
 #######################################
 # Endpoints
 #######################################
-TEST_ENVIRONMENT = 'local'
+TEST_ENVIRONMENT = 'staging'
 confirmation = input(f'Confirm that you want to load test {TEST_ENVIRONMENT.upper()} (type yes/no): ')
 if not confirmation == "yes":
     print("Terminating execution.")
@@ -31,10 +31,6 @@ elif TEST_ENVIRONMENT == 'staging': EP = f'https://user_dev:{get_api_password()}
 elif TEST_ENVIRONMENT == 'production': EP = f'https://user_dev:{get_api_password()}@imageservice-production.aquabyte.ai:443'
 else: raise f'TEST_ENVIRONMENT is {TEST_ENVIRONMENT}. Must be one of `local`, `staging`, or `production`.'
 
-#######################################
-# Simulated Users
-#######################################
-users = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 #######################################
 # Dummy Data
@@ -197,6 +193,12 @@ def generate_ingress_payload(
     return generated_payload
 
 
+#######################################
+# Simulated Users
+#######################################
+users = [i for i in range(50)]
+
+
 class HappyPathBehavior(TaskSet):
     def on_start(self):
         if len(users) > 0:
@@ -208,7 +210,7 @@ class HappyPathBehavior(TaskSet):
         # Turn parameters into a dict. Omit items those value are None.
         return {k: v for k, v in kwargs.items() if v is not None}
 
-    @task
+    @task(5)
     def qa(self):
         # 3. PUT qa
         time.sleep(random.randint(1, 5))
@@ -254,7 +256,7 @@ class HappyPathBehavior(TaskSet):
                     imageScore=None,
                 ), name="qa_post_skip")
 
-    @task(3)
+    @task(8)
     def annotation(self):
         # 1. PUT annotation
         result = self.client.put(f'/lati/annotation/images', json=self._json_payload(
@@ -300,7 +302,7 @@ class HappyPathBehavior(TaskSet):
                         imageScore=None,
                     ), name="annotation_post_skip")
 
-    @task(10)
+    @task(5)
     def ingress(self):
         # 1. POST ingress
         for _ in range(10):
